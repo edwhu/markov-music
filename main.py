@@ -5,15 +5,15 @@ import mido
 import numpy as np
 import random
 import time
-INPUT_DIRECTORY = 'input/'
+INPUT_DIRECTORY = 'bach/'
 VELOCITY = 32
 TIME = 64
 # return the next node given a note
-def get_next_note(first_note, weight_matrix):
-    next_note_prob = weight_matrix[first_note]
+def get_next_note(first_note, second_note, weight_matrix):
+    next_note_prob = weight_matrix[first_note][second_note]
     all_zeros = not np.any(next_note_prob)
     if all_zeros:
-        rand_note = random.uniform(0,127)
+        rand_note = np.random.randint(second_note - 15, second_note + 15)
         print('random note:', rand_note)
         return rand_note
 
@@ -27,14 +27,15 @@ def train_file(filepath, weight_matrix):
     mid = mido.MidiFile(filepath)
     for i, track in enumerate(mid.tracks):
         note_ons = [msg.note for msg in track if msg.type == 'note_on']
-        for i in range(len(note_ons) - 1):
+        for i in range(len(note_ons) - 2):
             a = note_ons[i]
             b = note_ons[i+1]
-            weight_matrix[a][b] += 1
+            c = note_ons[i+2]
+            weight_matrix[a][b][c] += 1
 
 def main():
     filepaths = listdir(INPUT_DIRECTORY)
-    weight_matrix = np.zeros((128, 128), dtype=np.float64)
+    weight_matrix = np.zeros((128, 128, 128), dtype=np.float64)
     for filepath in filepaths:
         if filepath.endswith(".mid"):
             train_file(INPUT_DIRECTORY + filepath, weight_matrix)
@@ -43,20 +44,23 @@ def main():
     # maybe use softmax, for now do standard normalization
     for i in range(len(weight_matrix)):
         second_note_array = weight_matrix[i]
-        total = np.sum(second_note_array)
-        if total == 0:
-            continue
-        else:
-            weight_matrix[i] = second_note_array / total
+        for j in range(len(second_note_array)):
+            third_note_array = weight_matrix[i][j]
+            total = np.sum(third_note_array)
+            if total == 0:
+                continue
+            else:
+                weight_matrix[i][j] = third_note_array / total
 
     non_zero = np.transpose(np.nonzero(weight_matrix))
-
+    print(non_zero)
     # get a starting note
     starting_note = non_zero[0][0]
+    starting_note_2 = non_zero[0][1]
     # play 100 notes and save it into a file
     generated_notes = []
     for i in range(200):
-        next_note = get_next_note(starting_note, weight_matrix)
+        next_note = get_next_note(starting_note, starting_note_2, weight_matrix)
         generated_notes.append(next_note)
         starting_note = next_note
 
