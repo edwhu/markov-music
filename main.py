@@ -1,10 +1,12 @@
+from os import listdir
 import pygame
 import mido
 import numpy as np
 import random
 import time
-VELOCITY = 64
-TIME = 64
+INPUT_DIRECTORY = 'bach/'
+VELOCITY = 32
+TIME = 150
 # return the next node given a note
 def get_next_note(first_note, weight_matrix):
     next_note_prob = weight_matrix[first_note]
@@ -19,11 +21,8 @@ def get_next_note(first_note, weight_matrix):
     # print('selected note:', next_note)
     return next_note
 
-def main():
-   
-    filepath = 'bach/BWV803.mid'
+def train_file(filepath, weight_matrix):
     mid = mido.MidiFile(filepath)
-    weight_matrix = np.zeros((128, 128), dtype=np.float64)
     for i, track in enumerate(mid.tracks):
         note_ons = [msg.note for msg in track if msg.type == 'note_on']
         for i in range(len(note_ons) - 1):
@@ -31,6 +30,13 @@ def main():
             b = note_ons[i+1]
             weight_matrix[a][b] += 1
 
+def main():
+    filepaths = listdir(INPUT_DIRECTORY)
+    weight_matrix = np.zeros((128, 128), dtype=np.float64)
+    for filepath in filepaths:
+        train_file(INPUT_DIRECTORY + filepath, weight_matrix)
+        print('done training file', filepath)
+        print(np.count_nonzero(weight_matrix))
     # let's convert weight_matrix into probabilities
     # maybe use softmax, for now do standard normalization
     for i in range(len(weight_matrix)):
