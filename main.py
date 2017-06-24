@@ -1,12 +1,13 @@
 from os import listdir
+import glob
 import pygame
 import mido
 import numpy as np
 import random
 import time
-INPUT_DIRECTORY = 'bach/'
+INPUT_DIRECTORY = 'input/'
 VELOCITY = 32
-TIME = 150
+TIME = 64
 # return the next node given a note
 def get_next_note(first_note, weight_matrix):
     next_note_prob = weight_matrix[first_note]
@@ -22,6 +23,7 @@ def get_next_note(first_note, weight_matrix):
     return next_note
 
 def train_file(filepath, weight_matrix):
+    print('training', filepath)
     mid = mido.MidiFile(filepath)
     for i, track in enumerate(mid.tracks):
         note_ons = [msg.note for msg in track if msg.type == 'note_on']
@@ -34,9 +36,9 @@ def main():
     filepaths = listdir(INPUT_DIRECTORY)
     weight_matrix = np.zeros((128, 128), dtype=np.float64)
     for filepath in filepaths:
-        train_file(INPUT_DIRECTORY + filepath, weight_matrix)
-        print('done training file', filepath)
-        print(np.count_nonzero(weight_matrix))
+        if filepath.endswith(".mid"):
+            train_file(INPUT_DIRECTORY + filepath, weight_matrix)
+            print(np.count_nonzero(weight_matrix))
     # let's convert weight_matrix into probabilities
     # maybe use softmax, for now do standard normalization
     for i in range(len(weight_matrix)):
@@ -64,7 +66,7 @@ def main():
     for note in generated_notes:
         track.append(mido.Message('note_on', note=note, velocity=VELOCITY, time=TIME))
         track.append(mido.Message('note_off', note=note, velocity=127, time=TIME))
-    OUTPUT = 'output/' + time.strftime('%H:%M:%S') + '.mid'
+    OUTPUT = 'output/' + time.strftime('track_%H_%M_%S') + '.mid'
     mid.save(OUTPUT)
 
     pygame.init()
